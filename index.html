@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>庫存與使用記錄管理系統</title>
+    <style>
+        /* 全站基礎放大 */
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f4f6f9; 
+            margin: 0; 
+            padding: 15px; 
+            box-sizing: border-box; 
+            font-size: 24px; /* 全站預設字體加大 */
+        }
+        .container { 
+            max-width: 900px; 
+            margin: 0 auto; 
+            background: #fff; 
+            padding: 25px; 
+            border-radius: 10px; 
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1); 
+        }
+        h2 { 
+            text-align: center; 
+            color: #222; 
+            margin-bottom: 25px; 
+            font-size: 28px; /* 標題加大 */
+        }
+        
+        /* 頁籤切換按鈕區 */
+        .tab-buttons { 
+            display: flex; 
+            gap: 12px; 
+            margin-bottom: 30px; 
+            border-bottom: 3px solid #ddd; 
+            padding-bottom: 15px; 
+        }
+        .tab-btn { 
+            flex: 1; 
+            padding: 16px; 
+            font-size: 24px; /* 頁籤文字加大 */
+            font-weight: bold; 
+            border: none; 
+            border-radius: 8px; 
+            cursor: pointer; 
+            background-color: #e9ecef; 
+            color: #495057; 
+            transition: 0.2s; 
+        }
+        .tab-btn.active { 
+            background-color: #007bff; 
+            color: white; 
+        }
+        
+        .form-section { display: none; }
+        .form-section.active { display: block; }
+
+        .form-group { margin-bottom: 20px; }
+        label { 
+            display: block; 
+            margin-bottom: 8px; 
+            font-weight: bold; 
+            color: #333; 
+            font-size: 20px; /* 欄位標籤加大 */
+        }
+        input[type="date"], input[type="text"], select { 
+            width: 100%; 
+            padding: 16px; /* 輸入框高度加高 */
+            border: 2px solid #ccc; 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-size: 20px; /* 輸入框文字放大 */
+            background-color: #fff;
+        }
+        
+        .items-section { margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        
+        /* 品項列排版 */
+        .item-row { 
+            display: flex; 
+            gap: 12px; 
+            margin-bottom: 15px; 
+            align-items: center; 
+            background: #fafafa; 
+            padding: 12px; 
+            border: 1px solid #ddd; 
+            border-radius: 8px; 
+        }
+        .item-row select.product-select { flex: 3; padding: 16px; font-size: 20px; }
+        .item-row input.qty-input { flex: 1.2; padding: 16px; font-size: 22px; font-weight: bold; text-align: center; width: 30%; }
+        .unit-label { font-size: 20px; color: #0056b3; min-width: 60px; font-weight: bold; text-align: center; }
+        
+        /* 按鈕全面放大 */
+        .btn { padding: 14px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; }
+        .btn-primary { background-color: #28a745; color: white; width: 100%; font-size: 22px; margin-top: 25px; padding: 18px; }
+        .btn-primary:hover { background-color: #218838; }
+        .btn-secondary { background-color: #007bff; color: white; margin-top: 10px; padding: 14px; font-size: 18px; width: 100%; }
+        .btn-secondary:hover { background-color: #0056b3; }
+        .btn-danger { background-color: #dc3545; color: white; padding: 16px 20px; font-size: 18px; }
+        .btn-danger:hover { background-color: #c82333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 頂部頁籤切換 -->
+        <div class="tab-buttons">
+            <button type="button" class="tab-btn active" id="btnUsageTab" onclick="switchTab('usage')">📋 客戶使用記錄</button>
+            <button type="button" class="tab-btn" id="btnPurchaseTab" onclick="switchTab('purchase')">📦 進貨記錄</button>
+        </div>
+
+        <!-- 1. 客戶使用記錄表單 -->
+        <div id="usageSection" class="form-section active">
+            <h2>客戶使用記錄登錄</h2>
+            <form id="usageForm" onsubmit="handleUsageSubmit(event)">
+                <div class="form-group">
+                    <label for="usageDate">日期：</label>
+                    <input type="date" id="usageDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="clientName">客戶姓名：</label>
+                    <input type="text" id="clientName" placeholder="請輸入客戶姓名" required>
+                </div>
+                <div class="form-group">
+                    <label for="orderNo">三聯單號：</label>
+                    <input type="text" id="orderNo" placeholder="請輸入三聯單號" required>
+                </div>
+                <div class="items-section">
+                    <label>使用品項與數量：</label>
+                    <div id="usageItemsContainer"></div>
+                    <button type="button" class="btn btn-secondary" onclick="addUsageRow()">+ 新增品項</button>
+                </div>
+                <button type="submit" id="usageSubmitBtn" class="btn btn-primary">確認送出使用記錄</button>
+            </form>
+        </div>
+
+        <!-- 2. 進貨記錄表單 -->
+        <div id="purchaseSection" class="form-section">
+            <h2>進貨記錄登錄</h2>
+            <form id="purchaseForm" onsubmit="handlePurchaseSubmit(event)">
+                <div class="form-group">
+                    <label for="purchaseDate">進貨日期：</label>
+                    <input type="date" id="purchaseDate" required>
+                </div>
+                <div class="items-section">
+                    <label>進貨品項與數量：</label>
+                    <div id="purchaseItemsContainer"></div>
+                    <button type="button" class="btn btn-secondary" onclick="addPurchaseRow()">+ 新增進貨品項</button>
+                </div>
+                <button type="submit" id="purchaseSubmitBtn" class="btn btn-primary">確認送出進貨資料</button>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        let activeProducts = [];
+
+        window.onload = function() {
+            document.getElementById('usageDate').valueAsDate = new Date();
+            document.getElementById('purchaseDate').valueAsDate = new Date();
+            
+            google.script.run
+                .withSuccessHandler(function(products) {
+                    activeProducts = products;
+                    addUsageRow();    
+                    addPurchaseRow(); 
+                })
+                .getActiveProducts();
+        };
+
+        function switchTab(tabName) {
+            const usageSec = document.getElementById('usageSection');
+            const purchaseSec = document.getElementById('purchaseSection');
+            const btnUsage = document.getElementById('btnUsageTab');
+            const btnPurchase = document.getElementById('btnPurchaseTab');
+
+            if (tabName === 'usage') {
+                usageSec.classList.add('active');
+                purchaseSec.classList.remove('active');
+                btnUsage.classList.add('active');
+                btnPurchase.classList.remove('active');
+            } else {
+                purchaseSec.classList.add('active');
+                usageSec.classList.remove('active');
+                btnPurchase.classList.add('active');
+                btnUsage.classList.remove('active');
+            }
+        }
+
+        // --- 客戶使用記錄：新增一列 ---
+        function addUsageRow() {
+            const container = document.getElementById('usageItemsContainer');
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            
+            let options = '<option value="">-- 請選擇品名 --</option>';
+            activeProducts.forEach(p => {
+                options += `<option value="${p.name}">${p.name} (${p.category} / ${p.subCategory})</option>`;
+            });
+            
+            row.innerHTML = `
+                <select class="product-select" onchange="updateUnit(this, 'useUnit')">${options}</select>
+                <input type="number" class="qty-input" placeholder="數量" min="0" step="0.5" value="1">
+                <span class="unit-label">-</span>
+                <button type="button" class="btn btn-danger" onclick="removeItemRow(this, 'usageItemsContainer')">✕</button>
+            `;
+            container.appendChild(row);
+        }
+
+        // --- 進貨記錄：新增一列 ---
+        function addPurchaseRow() {
+            const container = document.getElementById('purchaseItemsContainer');
+            const row = document.createElement('div');
+            row.className = 'item-row';
+            
+            let options = '<option value="">-- 請選擇進貨品名 --</option>';
+            activeProducts.forEach(p => {
+                options += `<option value="${p.name}">${p.name} (${p.category} / ${p.subCategory})</option>`;
+            });
+            
+            row.innerHTML = `
+                <select class="product-select" onchange="updateUnit(this, 'stockUnit')">${options}</select>
+                <input type="number" class="qty-input" placeholder="數量" min="1" step="1" value="1">
+                <span class="unit-label">-</span>
+                <button type="button" class="btn btn-danger" onclick="removeItemRow(this, 'purchaseItemsContainer')">✕</button>
+            `;
+            container.appendChild(row);
+        }
+
+        // 品名改變時，動態更新後方的單位文字
+        function updateUnit(selectElement, unitType) {
+            const row = selectElement.closest('.item-row');
+            const unitLabel = row.querySelector('.unit-label');
+            const productName = selectElement.value;
+            
+            if (!productName) {
+                unitLabel.innerText = '-';
+                return;
+            }
+            
+            const product = activeProducts.find(p => p.name === productName);
+            if (product) {
+                if (unitType === 'useUnit') {
+                    unitLabel.innerText = product.useUnit ? `[${product.useUnit}]` : '';
+                } else if (unitType === 'stockUnit') {
+                    unitLabel.innerText = product.stockUnit ? `[${product.stockUnit}]` : '';
+                }
+            } else {
+                unitLabel.innerText = '-';
+            }
+        }
+
+        function removeItemRow(btn, containerId) {
+            const container = document.getElementById(containerId);
+            if (container.children.length > 1) {
+                btn.closest('.item-row').remove();
+            } else {
+                alert('至少需要保留一個品項欄位！');
+            }
+        }
+
+        // 送出使用記錄
+        function handleUsageSubmit(e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('usageSubmitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = '正在送出中...';
+
+            const date = document.getElementById('usageDate').value;
+            const clientName = document.getElementById('clientName').value;
+            const orderNo = document.getElementById('orderNo').value;
+
+            const rows = document.querySelectorAll('#usageItemsContainer .item-row');
+            const items = [];
+            
+            rows.forEach(row => {
+                const product = row.querySelector('.product-select').value;
+                const qtyVal = row.querySelector('.qty-input').value;
+                const qty = parseFloat(qtyVal) || 0;
+                
+                if (product && product !== "" && qty > 0) {
+                    items.push({ product: product, qty: qty });
+                }
+            });
+
+            if (items.length === 0) {
+                alert('請至少填寫一項有效的產品與數量！');
+                submitBtn.disabled = false;
+                submitBtn.innerText = '確認送出使用記錄';
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    alert(response.message);
+                    if (response.success) {
+                        document.getElementById('clientName').value = '';
+                        document.getElementById('orderNo').value = '';
+                        document.getElementById('usageItemsContainer').innerHTML = '';
+                        addUsageRow();
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = '確認送出使用記錄';
+                })
+                .submitUsageData({ date, clientName, orderNo, items });
+        }
+
+        // 送出進貨記錄
+        function handlePurchaseSubmit(e) {
+            e.preventDefault();
+            const submitBtn = document.getElementById('purchaseSubmitBtn');
+            submitBtn.disabled = true;
+            submitBtn.innerText = '正在送出中...';
+
+            const date = document.getElementById('purchaseDate').value;
+            const rows = document.querySelectorAll('#purchaseItemsContainer .item-row');
+            const items = [];
+            
+            rows.forEach(row => {
+                const product = row.querySelector('.product-select').value;
+                const qtyVal = row.querySelector('.qty-input').value;
+                const qty = parseFloat(qtyVal) || 0;
+                
+                const selectedProd = activeProducts.find(p => p.name === product);
+                
+                if (product && product !== "" && qty > 0 && selectedProd) {
+                    items.push({ 
+                        product: product, 
+                        category: selectedProd.category, 
+                        subCategory: selectedProd.subCategory, 
+                        qty: qty, 
+                        unit: selectedProd.stockUnit 
+                    });
+                }
+            });
+
+            if (items.length === 0) {
+                alert('請至少填寫一項有效的進貨產品與數量！');
+                submitBtn.disabled = false;
+                submitBtn.innerText = '確認送出進貨資料';
+                return;
+            }
+
+            google.script.run
+                .withSuccessHandler(function(response) {
+                    alert(response.message);
+                    if (response.success) {
+                        document.getElementById('purchaseItemsContainer').innerHTML = '';
+                        addPurchaseRow();
+                    }
+                    submitBtn.disabled = false;
+                    submitBtn.innerText = '確認送出進貨資料';
+                })
+                .submitPurchaseData({ date, items });
+        }
+    </script>
+</body>
+</html>
